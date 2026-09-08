@@ -220,6 +220,17 @@ export default function App() {
       checkTunnelHealth(tunnelUrl);
     }
     scanHFRepo('TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF');
+
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setIsSidebarOpen(false);
+      }
+    };
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const fetchSessions = async () => {
@@ -650,6 +661,9 @@ export default function App() {
 
   return (
     <div className="app-container">
+      {isSidebarOpen && (
+        <div className="sidebar-backdrop" onClick={() => setIsSidebarOpen(false)} />
+      )}
       <aside className={`sidebar ${!isSidebarOpen ? 'closed' : ''}`}>
         <div className="sidebar-header">
           <div className="logo-badge">

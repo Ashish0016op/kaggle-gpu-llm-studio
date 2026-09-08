@@ -770,3 +770,85 @@ body {
   flex-shrink: 0;
 }
 
+/* 📱 Comprehensive Responsive Media Queries */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    height: 100vh;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.7);
+  }
+
+  .sidebar.closed {
+    margin-left: -320px;
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 9;
+  }
+
+  .model-bar-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .input-container {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  .action-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .msg-row {
+    max-width: 100%;
+  }
+
+  .msg-bubble {
+    max-width: 90%;
+  }
+}
+
+@media (max-width: 520px) {
+  .top-bar {
+    padding: 10px 12px;
+  }
+
+  .chat-canvas {
+    padding: 12px 10px;
+    gap: 12px;
+  }
+
+  .input-area {
+    padding: 8px 10px;
+  }
+
+  .msg-bubble {
+    max-width: 95%;
+    padding: 10px 12px;
+    font-size: 0.88rem;
+  }
+
+  .welcome-screen h2 {
+    font-size: 1.25rem;
+  }
+
+  .welcome-screen p {
+    font-size: 0.85rem;
+  }
+
+  .action-btn {
+    font-size: 0.78rem;
+    padding: 7px 10px;
+  }
+}
+
+
