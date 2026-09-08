@@ -96,7 +96,8 @@ body {
   flex-direction: column;
   backdrop-filter: blur(16px);
   z-index: 10;
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
 }
 
 .sidebar.closed {
@@ -104,8 +105,10 @@ body {
   min-width: 0;
   max-width: 0;
   overflow: hidden;
-  margin-left: -300px;
+  margin-left: 0;
   border-right: none;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .sidebar-toggle-btn {
@@ -822,11 +825,22 @@ body {
     left: 0;
     bottom: 0;
     height: 100vh;
+    width: 300px;
+    max-width: 85vw;
+    z-index: 100;
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.7);
+    transform: translateX(0);
+    transition: transform 0.25s ease;
   }
 
   .sidebar.closed {
-    margin-left: -320px;
+    width: 300px;
+    max-width: 85vw;
+    min-width: 300px;
+    margin-left: 0;
+    transform: translateX(-100%);
+    opacity: 0;
+    pointer-events: none;
   }
 
   .sidebar-backdrop {
