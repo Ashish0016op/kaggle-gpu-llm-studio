@@ -33,6 +33,15 @@ async def load_image_model(payload: LoadImageModelPayload):
     except httpx.RequestError as exc:
         raise HTTPException(status_code=502, detail=f"Failed to connect to Kaggle GPU: {str(exc)}")
 
+class ImageGeneratePayload(BaseModel):
+    prompt: str
+    negative_prompt: Optional[str] = ""
+    model_id: Optional[str] = "black-forest-labs/FLUX.1-schnell"
+    width: Optional[int] = 512
+    height: Optional[int] = 512
+    num_inference_steps: Optional[int] = 4
+    guidance_scale: Optional[float] = 3.5
+
 @router.post("/generate")
 async def generate_image(payload: ImageGeneratePayload):
     tunnel_url = kaggle_automator.tunnel_url
