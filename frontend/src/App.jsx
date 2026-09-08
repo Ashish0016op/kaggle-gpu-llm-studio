@@ -235,8 +235,32 @@ export default function App() {
   const [imageSteps, setImageSteps] = useState(4);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [generatedImages, setGeneratedImages] = useState([]);
-  const [activeZoomImage, setActiveZoomImage] = useState(null);
-  const [imageError, setImageError] = useState('');
+  const [isLoadingImageModel, setIsLoadingImageModel] = useState(false);
+  const [imageModelStatus, setImageModelStatus] = useState({ status: 'idle', message: '' });
+
+  const loadImageModelToGPU = async () => {
+    if (!imageModelId.trim()) return;
+    setIsLoadingImageModel(true);
+    setImageModelStatus({ status: 'loading', message: `Downloading & Loading ${imageModelId} onto Kaggle GPU VRAM...` });
+
+    try {
+      const resp = await fetch('/api/image/load', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model_id: imageModelId })
+      });
+      const data = await resp.json();
+      if (resp.ok && data.status === 'success') {
+        setImageModelStatus({ status: 'ready', message: `Image Model ${imageModelId} Loaded on Kaggle GPU!` });
+      } else {
+        setImageModelStatus({ status: 'error', message: data.detail || data.error || 'Failed to load image model.' });
+      }
+    } catch (err) {
+      setImageModelStatus({ status: 'error', message: err.message || 'Error connecting to Kaggle GPU' });
+    } finally {
+      setIsLoadingImageModel(false);
+    }
+  };
 
   const promptPresets = [
     "Cyberpunk neon metropolis with rainy reflections and flying cars, cinematic 8k",
@@ -878,7 +902,7 @@ export default function App() {
               </button>
             </div>
 
-            {studioMode === 'llm' && (
+            {studioMode === 'llm' ? (
               <>
                 <div className="input-container">
                   <Search className="input-icon" size={18} />
@@ -904,6 +928,29 @@ export default function App() {
                 >
                   <Download size={16} />
                   {isLoadingModel ? 'Loading to GPU...' : 'Load to Kaggle GPU'}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="input-container">
+                  <Search className="input-icon" size={18} />
+                  <input
+                    type="text"
+                    className="hf-input"
+                    placeholder="Hugging Face Image Model (e.g. black-forest-labs/FLUX.1-schnell or stabilityai/stable-diffusion-xl-base-1.0)"
+                    value={imageModelId}
+                    onChange={(e) => setImageModelId(e.target.value)}
+                  />
+                </div>
+
+                <button 
+                  className="action-btn primary" 
+                  onClick={loadImageModelToGPU} 
+                  disabled={isLoadingImageModel || !imageModelId.trim()}
+                  title="Load Image Model onto Kaggle GPU VRAM"
+                >
+                  <Download size={16} />
+                  {isLoadingImageModel ? 'Loading to GPU...' : 'Load Image Model to Kaggle GPU'}
                 </button>
               </>
             )}
@@ -942,6 +989,21 @@ export default function App() {
                   <div style={{ width: `${modelStatus.progress.percent}%`, height: '100%', background: 'linear-gradient(90deg, #6366f1, #10b981)', transition: 'width 0.4s ease-in-out' }} />
                 </div>
               )}
+            </div>
+          )}
+
+          {studioMode === 'flux' && imageModelStatus.message && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '8px 12px', background: 'rgba(0,0,0,0.4)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', marginTop: '4px' }}>
+              <div style={{ fontSize: '0.85rem', color: imageModelStatus.status === 'ready' ? '#10b981' : imageModelStatus.status === 'error' ? '#ef4444' : '#a5b4fc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {isLoadingImageModel ? (
+                  <Loader2 size={16} style={{ animation: 'spin 1s linear infinite', color: '#a5b4fc' }} />
+                ) : imageModelStatus.status === 'ready' ? (
+                  <CheckCircle2 size={16} style={{ color: '#10b981' }} />
+                ) : (
+                  <Sparkles size={16} />
+                )}
+                <span style={{ fontWeight: 600 }}>{imageModelStatus.message}</span>
+              </div>
             </div>
           )}
         </header>

@@ -10,14 +10,28 @@ except ImportError:
 
 router = APIRouter(prefix="/api/image", tags=["image"])
 
-class ImageGeneratePayload(BaseModel):
-    prompt: str
-    negative_prompt: Optional[str] = ""
-    model_id: Optional[str] = "black-forest-labs/FLUX.1-schnell"
-    width: Optional[int] = 512
-    height: Optional[int] = 512
-    num_inference_steps: Optional[int] = 4
-    guidance_scale: Optional[float] = 3.5
+class LoadImageModelPayload(BaseModel):
+    model_id: str
+
+@router.post("/load")
+async def load_image_model(payload: LoadImageModelPayload):
+    tunnel_url = kaggle_automator.tunnel_url
+    if not tunnel_url:
+        raise HTTPException(
+            status_code=400, 
+            detail="Kaggle Remote Tunnel not connected. Please connect your Kaggle GPU tunnel first."
+        )
+
+    target_url = f"{tunnel_url.rstrip('/')}/load-image-model"
+
+    try:
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            resp = await client.post(target_url, json=payload.dict())
+            if resp.status_code != 200:
+                raise HTTPException(status_code=resp.status_code, detail=resp.text)
+            return resp.json()
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to connect to Kaggle GPU: {str(exc)}")
 
 @router.post("/generate")
 async def generate_image(payload: ImageGeneratePayload):

@@ -117,6 +117,9 @@ def get_download_progress():
         "percent": percent
     }
 
+class LoadImageModelRequest(BaseModel):
+    model_id: str
+
 @app.get("/health")
 def get_health():
     gpu_ok, gpu_info = check_gpu()
@@ -133,9 +136,53 @@ def get_health():
             "n_ctx": model_state["n_ctx"],
             "loaded_at": model_state["loaded_at"],
         },
-        "image_model": image_state["model_id"],
+        "image_state": {
+            "status": image_state["status"],
+            "model_id": image_state["model_id"],
+            "error": image_state["error"]
+        },
         "error": model_state["error"]
     }
+
+@app.post("/load-image-model")
+async def load_image_model(req: LoadImageModelRequest):
+    global image_state
+    
+    image_state["status"] = "loading"
+    image_state["error"] = None
+    image_state["model_id"] = req.model_id
+    
+    print(f"⏳ Downloading & Loading Image Model onto GPU: {req.model_id}")
+
+    def _do_load():
+        import torch
+        from diffusers import AutoPipelineForText2Image
+
+        if image_state["pipe"] is not None:
+            del image_state["pipe"]
+            image_state["pipe"] = None
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+        dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+        pipe = AutoPipelineForText2Image.from_pretrained(
+            req.model_id,
+            torch_dtype=dtype,
+            safety_checker=None
+        )
+        pipe.to("cuda")
+        image_state["pipe"] = pipe
+        image_state["status"] = "ready"
+        return {"status": "success", "message": f"Loaded Image Model {req.model_id} onto GPU VRAM!"}
+
+    try:
+        res = await asyncio.to_thread(_do_load)
+        return res
+    except Exception as e:
+        image_state["status"] = "error"
+        image_state["error"] = str(e)
+        print(f"❌ Error loading image model: {e}")
+        return {"status": "error", "error": f"Failed to load image model: {str(e)}"}
 
 @app.post("/load")
 async def load_model(req: LoadModelRequest):
