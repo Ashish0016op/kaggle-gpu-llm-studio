@@ -241,10 +241,18 @@ export default function App() {
     setCurrentSessionId(sessionId);
     try {
       const resp = await fetch(`/api/chat/sessions/${sessionId}/messages`);
+      if (!resp.ok) {
+        // Session not found (404), remove stale session and auto-create new conversation
+        setSessions(prev => prev.filter(s => s.id !== sessionId));
+        createNewChat();
+        return;
+      }
       const msgs = await resp.json();
       setMessages(msgs);
     } catch (e) {
       console.error("Failed to load messages:", e);
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      createNewChat();
     }
   };
 

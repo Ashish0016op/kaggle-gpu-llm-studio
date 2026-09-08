@@ -8,6 +8,7 @@ import json
 try:
     from backend.database import (
         create_session,
+        get_session,
         get_all_sessions,
         get_session_messages,
         add_message,
@@ -18,6 +19,7 @@ try:
 except ImportError:
     from database import (
         create_session,
+        get_session,
         get_all_sessions,
         get_session_messages,
         add_message,
@@ -58,6 +60,13 @@ def new_session(payload: CreateSessionPayload):
         quant_file=payload.quant_file or ""
     )
     return session
+
+@router.get("/sessions/{session_id}/messages")
+def list_messages(session_id: str):
+    session = get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return get_session_messages(session_id)
 
 class UpdateSessionTitlePayload(BaseModel):
     title: str

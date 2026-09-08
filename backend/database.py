@@ -56,6 +56,13 @@ def get_all_sessions() -> List[Dict[str, Any]]:
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
 
+def get_session(session_id: str) -> Optional[Dict[str, Any]]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM sessions WHERE id = ?", (session_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
 def get_session_messages(session_id: str) -> List[Dict[str, Any]]:
     with get_db() as conn:
         cursor = conn.cursor()
