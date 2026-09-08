@@ -780,18 +780,18 @@ export default function App() {
       </aside>
 
       <main className="main-content">
-        {!isSidebarOpen && (
-          <button 
-            className="sidebar-open-floating-btn" 
-            onClick={() => setIsSidebarOpen(true)}
-            title="Open sidebar"
-          >
-            <PanelLeft size={20} />
-          </button>
-        )}
-
-        <header className="top-bar" style={{ paddingLeft: !isSidebarOpen ? '58px' : '20px' }}>
+        <header className="top-bar">
           <div className="model-bar-row">
+            {!isSidebarOpen && (
+              <button 
+                className="topbar-toggle-btn" 
+                onClick={() => setIsSidebarOpen(true)}
+                title="Open Sidebar"
+              >
+                <PanelLeft size={20} />
+              </button>
+            )}
+
             <div className="input-container">
               <Search className="input-icon" size={18} />
               <input

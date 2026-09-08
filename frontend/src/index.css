@@ -152,6 +152,27 @@ body {
   transform: scale(1.08);
 }
 
+.topbar-toggle-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  border: 1px solid var(--border-glow);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px var(--accent-glow);
+  transition: transform 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.topbar-toggle-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 18px var(--accent-glow);
+}
+
 .sidebar-header {
   padding: 16px 20px;
   border-bottom: 1px solid var(--border-subtle);
