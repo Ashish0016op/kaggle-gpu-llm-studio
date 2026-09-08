@@ -179,7 +179,20 @@ for line in iter(p.stdout.readline, ""):
 `;
 
 export default function App() {
-  const [viewMode, setViewMode] = useState('welcome');
+  const [viewMode, setViewMode] = useState(() => {
+    const savedMode = localStorage.getItem('view_mode');
+    const savedUrl = localStorage.getItem('kaggle_tunnel_url');
+    if (savedMode === 'studio' && savedUrl) {
+      return 'studio';
+    }
+    return 'welcome';
+  });
+  
+  const updateViewMode = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('view_mode', mode);
+  };
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   const [tunnelUrl, setTunnelUrl] = useState(() => localStorage.getItem('kaggle_tunnel_url') || '');
@@ -364,7 +377,7 @@ export default function App() {
   const handleConnectTunnel = async () => {
     const isOk = await checkTunnelHealth(tunnelUrl);
     if (isOk) {
-      setViewMode('studio');
+      updateViewMode('studio');
     }
   };
 
@@ -581,7 +594,7 @@ export default function App() {
           <button 
             className="action-btn primary" 
             style={{ margin: '0 auto', padding: '14px 32px', fontSize: '1.05rem', borderRadius: 'var(--radius-md)' }}
-            onClick={() => setViewMode('tunnel_modal')}
+            onClick={() => updateViewMode('tunnel_modal')}
           >
             <Play size={20} />
             Connect Kaggle Remote Tunnel
@@ -602,7 +615,7 @@ export default function App() {
               <Link2 size={24} style={{ color: '#a5b4fc' }} />
               <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.5rem', fontWeight: 700 }}>Connect Kaggle Remote Tunnel</h2>
             </div>
-            <button className="action-btn" onClick={() => setViewMode('welcome')} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>
+            <button className="action-btn" onClick={() => updateViewMode('welcome')} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>
               Back
             </button>
           </div>
