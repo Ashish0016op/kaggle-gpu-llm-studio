@@ -1,7 +1,7 @@
 """
-Kaggle T4 GPU Remote Tunnel Worker Server for GGUF LLM Inference
+Kaggle T4 GPU Remote Tunnel Worker Server for GGUF LLM & FLUX Image Inference
 Runs inside Kaggle notebook environment with GPU accelerator enabled.
-Exposes a FastAPI server over Pinggy / Ngrok / Localtunnel reverse tunnel.
+Exposes a FastAPI server over Cloudflare reverse tunnel.
 """
 
 import os
@@ -10,6 +10,8 @@ import time
 import subprocess
 import asyncio
 import warnings
+import io
+import base64
 from typing import List, Optional, Dict, Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,7 +34,7 @@ def check_gpu():
         pass
     return False, "CPU Only"
 
-app = FastAPI(title="Kaggle Remote LLM GPU Worker")
+app = FastAPI(title="Kaggle Remote LLM & FLUX GPU Worker")
 
 app.add_middleware(
     CORSMiddleware,
@@ -53,6 +55,13 @@ model_state = {
     "target_file_size": 0
 }
 
+image_state = {
+    "pipe": None,
+    "model_id": None,
+    "status": "idle",
+    "error": None
+}
+
 class LoadModelRequest(BaseModel):
     repo_id: str
     filename: str
@@ -69,6 +78,15 @@ class ChatCompletionRequest(BaseModel):
     top_k: Optional[int] = 40
     max_tokens: Optional[int] = 1024
     reasoning: Optional[str] = "off"
+
+class ImageGenRequest(BaseModel):
+    prompt: str
+    negative_prompt: Optional[str] = ""
+    model_id: Optional[str] = "black-forest-labs/FLUX.1-schnell"
+    width: Optional[int] = 512
+    height: Optional[int] = 512
+    num_inference_steps: Optional[int] = 4
+    guidance_scale: Optional[float] = 3.5
 
 def get_download_progress():
     """Calculate current downloaded GGUF file size from Hugging Face hub cache."""
@@ -115,6 +133,7 @@ def get_health():
             "n_ctx": model_state["n_ctx"],
             "loaded_at": model_state["loaded_at"],
         },
+        "image_model": image_state["model_id"],
         "error": model_state["error"]
     }
 
@@ -150,7 +169,6 @@ async def load_model(req: LoadModelRequest):
         return {"status": "success", "message": f"Loaded model {req.filename} on GPU"}
 
     try:
-        # Run heavy CUDA GGUF loading in separate thread so event loop stays responsive
         result = await asyncio.to_thread(_non_blocking_load)
         return result
     except Exception as e:
@@ -192,6 +210,73 @@ async def chat_stream(req: ChatCompletionRequest):
 
     return StreamingResponse(token_generator(), media_type="text/event-stream")
 
+@app.post("/generate-image")
+async def generate_image(req: ImageGenRequest):
+    """Generate image using diffusers (FLUX.1 / Stable Diffusion) on Kaggle GPU."""
+    global image_state
+    
+    target_model = req.model_id or "black-forest-labs/FLUX.1-schnell"
+
+    def _generate():
+        import torch
+        from diffusers import AutoPipelineForText2Image
+
+        if image_state["pipe"] is None or image_state["model_id"] != target_model:
+            print(f"🎨 Loading Image Generation Model: {target_model}")
+            image_state["status"] = "loading"
+            
+            # Use bfloat16 or float16 for fast GPU VRAM efficiency
+            dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+            
+            pipe = AutoPipelineForText2Image.from_pretrained(
+                target_model,
+                torch_dtype=dtype,
+                safety_checker=None
+            )
+            pipe.to("cuda")
+            image_state["pipe"] = pipe
+            image_state["model_id"] = target_model
+            image_state["status"] = "ready"
+
+        pipe = image_state["pipe"]
+        steps = req.num_inference_steps or (4 if "schnell" in target_model else 25)
+        
+        generator = torch.Generator("cuda").manual_seed(int(time.time()))
+        
+        print(f"🖼️ Generating image for prompt: '{req.prompt}'...")
+        result = pipe(
+            prompt=req.prompt,
+            negative_prompt=req.negative_prompt if req.negative_prompt else None,
+            width=req.width or 512,
+            height=req.height or 512,
+            num_inference_steps=steps,
+            guidance_scale=req.guidance_scale or 3.5,
+            generator=generator
+        )
+        
+        img = result.images[0]
+        buffered = io.BytesIO()
+        img.save(buffered, format="PNG")
+        img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        
+        return {
+            "status": "success",
+            "image_url": f"data:image/png;base64,{img_str}",
+            "prompt": req.prompt,
+            "width": req.width,
+            "height": req.height,
+            "model_id": target_model
+        }
+
+    try:
+        res = await asyncio.to_thread(_generate)
+        return res
+    except Exception as e:
+        image_state["status"] = "error"
+        image_state["error"] = str(e)
+        print(f"❌ Image generation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     import threading
@@ -215,4 +300,3 @@ if __name__ == "__main__":
     for line in iter(p.stdout.readline, ""):
         if "trycloudflare.com" in line:
             print(">>> TUNNEL URL:", line.strip())
-

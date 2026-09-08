@@ -25,7 +25,13 @@ import {
   ArrowRight,
   PanelLeftClose,
   PanelLeft,
-  Edit2
+  Edit2,
+  Image,
+  Wand2,
+  ZoomIn,
+  Sliders,
+  Eye,
+  Maximize2
 } from 'lucide-react';
 import { marked } from 'marked';
 
@@ -218,6 +224,68 @@ export default function App() {
   
   const [temperature, setTemperature] = useState(0.7);
   const messagesEndRef = useRef(null);
+
+  // 🎨 Dual Studio: FLUX & SD Image Generation State
+  const [studioMode, setStudioMode] = useState('llm'); // 'llm' | 'flux'
+  const [imagePrompt, setImagePrompt] = useState('');
+  const [imageNegativePrompt, setImageNegativePrompt] = useState('');
+  const [imageModelId, setImageModelId] = useState('black-forest-labs/FLUX.1-schnell');
+  const [imageWidth, setImageWidth] = useState(512);
+  const [imageHeight, setImageHeight] = useState(512);
+  const [imageSteps, setImageSteps] = useState(4);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [generatedImages, setGeneratedImages] = useState([]);
+  const [activeZoomImage, setActiveZoomImage] = useState(null);
+  const [imageError, setImageError] = useState('');
+
+  const promptPresets = [
+    "Cyberpunk neon metropolis with rainy reflections and flying cars, cinematic 8k",
+    "Hyperrealistic close-up portrait of an astronaut floating in colorful nebula",
+    "Cute 3D Pixar style baby dragon sitting on a pile of glowing crystals",
+    "Epic fantasy landscape with floating islands, waterfalls, and sunset sky",
+    "Isometric futuristic AI laboratory with glowing holographic displays"
+  ];
+
+  const handleGenerateImage = async () => {
+    if (!imagePrompt.trim()) return;
+    setIsGeneratingImage(true);
+    setImageError('');
+
+    try {
+      const resp = await fetch('/api/image/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: imagePrompt,
+          negative_prompt: imageNegativePrompt,
+          model_id: imageModelId,
+          width: imageWidth,
+          height: imageHeight,
+          num_inference_steps: imageSteps
+        })
+      });
+      const data = await resp.json();
+      if (resp.ok && data.status === 'success') {
+        const newImg = {
+          id: Date.now().toString(),
+          url: data.image_url,
+          prompt: imagePrompt,
+          model: imageModelId,
+          width: imageWidth,
+          height: imageHeight,
+          steps: imageSteps,
+          timestamp: new Date().toLocaleTimeString()
+        };
+        setGeneratedImages(prev => [newImg, ...prev]);
+      } else {
+        setImageError(data.detail || data.error || 'Failed to generate image on Kaggle GPU');
+      }
+    } catch (err) {
+      setImageError(err.message || 'Network error connecting to Kaggle GPU');
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -792,34 +860,56 @@ export default function App() {
               </button>
             )}
 
-            <div className="input-container">
-              <Search className="input-icon" size={18} />
-              <input
-                type="text"
-                className="hf-input"
-                placeholder="Hugging Face Repo (e.g. TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF)"
-                value={repoId}
-                onChange={(e) => setRepoId(e.target.value)}
-              />
+            {/* 🎨 Dual Studio Mode Switcher */}
+            <div className="studio-mode-switcher">
+              <button 
+                className={`mode-btn ${studioMode === 'llm' ? 'active' : ''}`}
+                onClick={() => setStudioMode('llm')}
+              >
+                <MessageSquare size={16} />
+                <span>GGUF LLM Studio</span>
+              </button>
+              <button 
+                className={`mode-btn ${studioMode === 'flux' ? 'active' : ''}`}
+                onClick={() => setStudioMode('flux')}
+              >
+                <Wand2 size={16} />
+                <span>FLUX Image Studio</span>
+              </button>
             </div>
 
-            <button className="action-btn" onClick={() => scanHFRepo(repoId)} disabled={isScanningHF}>
-              <Globe size={16} />
-              {isScanningHF ? 'Scanning HF...' : 'Scan GGUF Quants'}
-            </button>
+            {studioMode === 'llm' && (
+              <>
+                <div className="input-container">
+                  <Search className="input-icon" size={18} />
+                  <input
+                    type="text"
+                    className="hf-input"
+                    placeholder="Hugging Face Repo (e.g. TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF)"
+                    value={repoId}
+                    onChange={(e) => setRepoId(e.target.value)}
+                  />
+                </div>
 
-            <button 
-              className="action-btn primary" 
-              onClick={loadModelToGPU} 
-              disabled={isLoadingModel || !selectedFile}
-              title={!selectedFile ? "Please click 'Scan GGUF Quants' first to select a quantization level." : "Load model onto Kaggle GPU VRAM"}
-            >
-              <Download size={16} />
-              {isLoadingModel ? 'Loading to GPU...' : 'Load to Kaggle GPU'}
-            </button>
+                <button className="action-btn" onClick={() => scanHFRepo(repoId)} disabled={isScanningHF}>
+                  <Globe size={16} />
+                  {isScanningHF ? 'Scanning HF...' : 'Scan GGUF Quants'}
+                </button>
+
+                <button 
+                  className="action-btn primary" 
+                  onClick={loadModelToGPU} 
+                  disabled={isLoadingModel || !selectedFile}
+                  title={!selectedFile ? "Please click 'Scan GGUF Quants' first to select a quantization level." : "Load model onto Kaggle GPU VRAM"}
+                >
+                  <Download size={16} />
+                  {isLoadingModel ? 'Loading to GPU...' : 'Load to Kaggle GPU'}
+                </button>
+              </>
+            )}
           </div>
 
-          {discoveredFiles.length > 0 && (
+          {studioMode === 'llm' && discoveredFiles.length > 0 && (
             <div className="quants-pill-container">
               <span style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 600 }}>Quantizations:</span>
               {discoveredFiles.map(f => (
@@ -834,7 +924,7 @@ export default function App() {
             </div>
           )}
 
-          {modelStatus.message && (
+          {studioMode === 'llm' && modelStatus.message && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '8px 12px', background: 'rgba(0,0,0,0.4)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', marginTop: '4px' }}>
               <div style={{ fontSize: '0.85rem', color: modelStatus.status === 'ready' ? '#10b981' : modelStatus.status === 'error' ? '#ef4444' : '#a5b4fc', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {isLoadingModel ? (
@@ -856,62 +946,261 @@ export default function App() {
           )}
         </header>
 
-        <div className="chat-canvas">
-          {messages.length === 0 ? (
-            <div className="welcome-screen">
-              <div className="welcome-icon">
-                <Bot size={32} />
-              </div>
-              <h2>Run any GGUF Model on Kaggle T4 GPU</h2>
-              <p>
-                Select your GGUF quantization (`Q1`, `Q2_K`, `Q3_K_M`, `Q4_K_M`, `Q8_0`), load the model onto your Kaggle GPU, and enjoy multi-turn conversation memory!
-              </p>
-            </div>
-          ) : (
-            messages.map((msg, idx) => (
-              <div key={idx} className={`msg-row ${msg.role}`}>
-                <div className="avatar">
-                  {msg.role === 'user' ? 'U' : <Bot size={18} />}
+        {studioMode === 'llm' ? (
+          <>
+            <div className="chat-canvas">
+              {messages.length === 0 ? (
+                <div className="welcome-screen">
+                  <div className="welcome-icon">
+                    <Bot size={32} />
+                  </div>
+                  <h2>Run any GGUF Model on Kaggle T4 GPU</h2>
+                  <p>
+                    Select your GGUF quantization (`Q1`, `Q2_K`, `Q3_K_M`, `Q4_K_M`, `Q8_0`), load the model onto your Kaggle GPU, and enjoy multi-turn conversation memory!
+                  </p>
                 </div>
-                <div className="msg-bubble">
-                  <div 
-                    className="msg-text"
-                    dangerouslySetInnerHTML={{ __html: marked.parse(msg.content || '') }}
-                  />
-                  {msg.role === 'assistant' && !msg.content && isStreaming && idx === messages.length - 1 && (
-                    <div style={{ display: 'flex', gap: '4px', padding: '4px 0' }}>
-                      <span className="typing-dot"></span>
-                      <span className="typing-dot" style={{ animationDelay: '0.2s' }}></span>
-                      <span className="typing-dot" style={{ animationDelay: '0.4s' }}></span>
+              ) : (
+                messages.map((msg, idx) => (
+                  <div key={idx} className={`msg-row ${msg.role}`}>
+                    <div className="avatar">
+                      {msg.role === 'user' ? 'U' : <Bot size={18} />}
                     </div>
+                    <div className="msg-bubble">
+                      <div 
+                        className="msg-text"
+                        dangerouslySetInnerHTML={{ __html: marked.parse(msg.content || '') }}
+                      />
+                      {msg.role === 'assistant' && !msg.content && isStreaming && idx === messages.length - 1 && (
+                        <div style={{ display: 'flex', gap: '4px', padding: '4px 0' }}>
+                          <span className="typing-dot"></span>
+                          <span className="typing-dot" style={{ animationDelay: '0.2s' }}></span>
+                          <span className="typing-dot" style={{ animationDelay: '0.4s' }}></span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <footer className="input-area">
+              <div className="input-box-wrapper">
+                <textarea
+                  className="chat-input"
+                  rows={1}
+                  placeholder="Ask anything... (Multi-turn chat memory active)"
+                  value={inputPrompt}
+                  onChange={(e) => setInputPrompt(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                />
+                <button className="send-btn" onClick={sendMessage} disabled={isStreaming || !inputPrompt.trim()}>
+                  <Send size={18} />
+                </button>
+              </div>
+            </footer>
+          </>
+        ) : (
+          /* 🎨 FLUX & Stable Diffusion Image Studio Canvas */
+          <div className="flux-studio-container">
+            <div className="flux-card">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                <Wand2 size={22} style={{ color: '#a5b4fc' }} />
+                <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.4rem', fontWeight: 700 }}>
+                  FLUX.1 & SD Image Generator
+                </h2>
+                <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: 'var(--radius-full)', background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', fontWeight: 600 }}>
+                  Kaggle T4 GPU Accelerated
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
+                <input
+                  type="text"
+                  className="hf-input"
+                  placeholder="Describe the image you want to generate... (e.g. Cyberpunk neon city in rain)"
+                  value={imagePrompt}
+                  onChange={(e) => setImagePrompt(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleGenerateImage(); }}
+                  style={{ flex: 1, padding: '12px 16px', fontSize: '0.95rem' }}
+                />
+                <button 
+                  className="action-btn primary"
+                  onClick={handleGenerateImage}
+                  disabled={isGeneratingImage || !imagePrompt.trim()}
+                  style={{ padding: '12px 24px', fontSize: '0.95rem', borderRadius: 'var(--radius-md)' }}
+                >
+                  {isGeneratingImage ? (
+                    <>
+                      <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={18} />
+                      Generate Image
+                    </>
                   )}
+                </button>
+              </div>
+
+              {/* Preset Prompts */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Ideas:</span>
+                {promptPresets.map((preset, pIdx) => (
+                  <button 
+                    key={pIdx} 
+                    className="flux-preset-pill"
+                    onClick={() => setImagePrompt(preset)}
+                  >
+                    {preset.slice(0, 42)}...
+                  </button>
+                ))}
+              </div>
+
+              {/* FLUX Controls Row */}
+              <div className="flux-controls-row">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Model:</label>
+                  <select 
+                    className="flux-select" 
+                    value={imageModelId}
+                    onChange={(e) => setImageModelId(e.target.value)}
+                  >
+                    <option value="black-forest-labs/FLUX.1-schnell">FLUX.1 schnell (Fast 4-Step)</option>
+                    <option value="stabilityai/stable-diffusion-xl-base-1.0">Stable Diffusion XL 1.0</option>
+                    <option value="runwayml/stable-diffusion-v1-5">Stable Diffusion 1.5</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Resolution:</label>
+                  <select 
+                    className="flux-select"
+                    value={`${imageWidth}x${imageHeight}`}
+                    onChange={(e) => {
+                      const [w, h] = e.target.value.split('x').map(Number);
+                      setImageWidth(w);
+                      setImageHeight(h);
+                    }}
+                  >
+                    <option value="512x512">512 x 512 (Square Fast)</option>
+                    <option value="768x768">768 x 768 (HD Square)</option>
+                    <option value="1024x1024">1024 x 1024 (Ultra HD)</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Inference Steps:</label>
+                  <input
+                    type="number"
+                    className="flux-input-num"
+                    min={1}
+                    max={50}
+                    value={imageSteps}
+                    onChange={(e) => setImageSteps(Number(e.target.value))}
+                    style={{ width: '70px' }}
+                  />
                 </div>
               </div>
-            ))
-          )}
-          <div ref={messagesEndRef} />
-        </div>
 
-        <footer className="input-area">
-          <div className="input-box-wrapper">
-            <textarea
-              className="chat-input"
-              rows={1}
-              placeholder="Ask anything... (Multi-turn chat memory active)"
-              value={inputPrompt}
-              onChange={(e) => setInputPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  sendMessage();
-                }
-              }}
-            />
-            <button className="send-btn" onClick={sendMessage} disabled={isStreaming || !inputPrompt.trim()}>
-              <Send size={18} />
-            </button>
+              {imageError && (
+                <div style={{ marginTop: '12px', padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <XCircle size={16} /> {imageError}
+                </div>
+              )}
+            </div>
+
+            {/* Generated Image Gallery */}
+            <div style={{ marginTop: '10px' }}>
+              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.15rem', fontWeight: 700, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Image size={18} style={{ color: '#a5b4fc' }} />
+                Generated Artwork Gallery ({generatedImages.length})
+              </h3>
+
+              {generatedImages.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px 20px', border: '2px dashed var(--border-subtle)', borderRadius: 'var(--radius-lg)', color: 'var(--text-muted)' }}>
+                  <Wand2 size={40} style={{ margin: '0 auto 12px auto', opacity: 0.4 }} />
+                  <p style={{ fontSize: '1rem', fontWeight: 600 }}>No artwork generated yet</p>
+                  <p style={{ fontSize: '0.85rem' }}>Enter a prompt above and click "Generate Image" to create artwork on Kaggle GPU!</p>
+                </div>
+              ) : (
+                <div className="image-gallery-grid">
+                  {generatedImages.map((img) => (
+                    <div key={img.id} className="image-card">
+                      <img src={img.url} alt={img.prompt} />
+                      <div className="image-card-overlay">
+                        <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          "{img.prompt}"
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          <span>{img.width}x{img.height} • {img.steps} steps</span>
+                          <span>{img.timestamp}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                          <button 
+                            className="action-btn"
+                            style={{ flex: 1, padding: '5px 8px', fontSize: '0.75rem' }}
+                            onClick={() => setActiveZoomImage(img)}
+                          >
+                            <ZoomIn size={14} /> Zoom
+                          </button>
+                          <a 
+                            href={img.url} 
+                            download={`flux-art-${img.id}.png`}
+                            className="action-btn primary"
+                            style={{ flex: 1, padding: '5px 8px', fontSize: '0.75rem', textDecoration: 'none', textAlign: 'center' }}
+                          >
+                            <Download size={14} /> Download
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Lightbox Zoom Modal */}
+            {activeZoomImage && (
+              <div className="lightbox-overlay" onClick={() => setActiveZoomImage(null)}>
+                <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+                  <img 
+                    src={activeZoomImage.url} 
+                    alt={activeZoomImage.prompt} 
+                    style={{ maxWidth: '100%', maxHeight: '75vh', objectFit: 'contain', background: '#000' }} 
+                  />
+                  <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-subtle)' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'white' }}>"{activeZoomImage.prompt}"</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        Model: {activeZoomImage.model} • Resolution: {activeZoomImage.width}x{activeZoomImage.height}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <a 
+                        href={activeZoomImage.url} 
+                        download={`flux-art-${activeZoomImage.id}.png`}
+                        className="action-btn primary"
+                        style={{ padding: '8px 16px', fontSize: '0.85rem', textDecoration: 'none' }}
+                      >
+                        <Download size={16} /> Download PNG
+                      </a>
+                      <button className="action-btn" onClick={() => setActiveZoomImage(null)}>
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        </footer>
+        )}
       </main>
     </div>
   );

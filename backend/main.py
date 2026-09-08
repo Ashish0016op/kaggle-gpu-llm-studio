@@ -16,18 +16,20 @@ try:
     from backend.routes.model_routes import router as model_router
     from backend.routes.chat_routes import router as chat_router
     from backend.routes.kaggle_routes import router as kaggle_router
+    from backend.routes.image_routes import router as image_router
     from backend.database import init_db
 except ImportError:
     from routes.model_routes import router as model_router
     from routes.chat_routes import router as chat_router
     from routes.kaggle_routes import router as kaggle_router
+    from routes.image_routes import router as image_router
     from database import init_db
 
 init_db()
 
 app = FastAPI(
     title="Kaggle Remote GGUF Central Platform API",
-    description="Central backend connecting ReactJS frontend to Kaggle GPU Remote Worker with Hugging Face GGUF auto-discovery.",
+    description="Central backend connecting ReactJS frontend to Kaggle GPU Remote Worker with Hugging Face GGUF auto-discovery and FLUX image generation.",
     version="1.0.0"
 )
 
@@ -42,6 +44,7 @@ app.add_middleware(
 app.include_router(model_router)
 app.include_router(chat_router)
 app.include_router(kaggle_router)
+app.include_router(image_router)
 
 @app.get("/")
 def read_root():

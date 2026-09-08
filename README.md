@@ -1,26 +1,25 @@
-# 🚀 Kaggle T4 GPU LLM Studio
+# 🚀 Kaggle T4 GPU Dual Studio (LLMs + FLUX.1 Image AI)
 
-> **Run GGUF LLM models locally on this UI — powered by free Kaggle T4 GPU (16GB VRAM)!**  
-> *Run any Hugging Face GGUF model locally on the web UI without extra local GPU setup or API key secrets.*
+> **Run GGUF Text LLMs & FLUX.1 AI Image Generation on this UI — powered by free Kaggle T4 GPU (16GB VRAM)!**  
+> *Run any Hugging Face GGUF text model or generate FLUX.1 / Stable Diffusion AI images on the web UI without extra local GPU setup or API key secrets.*
 
 ---
 
-## 🌟 Why Kaggle GGUF Studio?
+## 🌟 Why Kaggle GPU Dual Studio?
 
-Running open-source LLMs locally often requires expensive high-VRAM NVIDIA GPUs. **Kaggle GGUF Studio** allows you to run GGUF models locally on a sleek Web UI while offloading all GPU computation to Kaggle's free **Tesla T4 GPU (16GB VRAM)** via secure remote tunneling. 
-
-Simply enter any Hugging Face GGUF repo ID, discover quantization options (`Q4_K_M`, `Q5_K_M`, `Q8_0`, etc.), load it into Kaggle GPU VRAM, and enjoy multi-turn chat responses directly on your local UI!
+Running open-source LLMs and AI Image Generators locally often requires expensive high-VRAM NVIDIA GPUs. **Kaggle GPU Dual Studio** allows you to run GGUF text models and FLUX.1 image generation on a sleek Web UI while offloading all GPU computation to Kaggle's free **Tesla T4 GPU (16GB VRAM)** via secure remote tunneling. 
 
 ---
 
 ## ✨ Key Features
 
-- 💻 **Run GGUF Models Locally on UI**: Stream LLM responses locally in your browser without needing expensive local hardware.
-- ⚡ **Free Kaggle T4 GPU Acceleration**: Offload heavy model loading and GGUF token generation onto free 16GB Kaggle GPU VRAM.
+- 💬 **GGUF Text LLM Studio**: Stream LLM chat responses (Llama 3, Qwen 2.5, DeepSeek R1, Mistral) locally in your browser.
+- 🎨 **FLUX.1 & SD Image Studio**: Generate high-resolution AI artwork using `FLUX.1-schnell` and `Stable Diffusion XL` directly on Kaggle GPU.
+- ⚡ **Free Kaggle T4 GPU Acceleration**: Offload heavy LLM loading and FLUX image diffusion onto free 16GB Kaggle GPU VRAM.
 - 🧠 **Auto Hugging Face Quant Discovery**: Type any Hugging Face GGUF repo ID (e.g. `TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF`) and automatically discover all available quantization options.
 - 🚀 **Zero Credentials / Secret Keys**: Connect securely via **Cloudflare Remote Tunneling** without managing API keys or secrets.
+- 🖼️ **Image Lightbox & 1-Click HD Download**: Fullscreen image preview modal with prompt metadata and direct PNG downloads.
 - 💬 **Multi-Turn Conversation Memory**: Persistent SQLite chat history with dynamic thread titles and session management.
-- 🎨 **Modern React Glassmorphism UI**: High-performance dark interface with collapsible sidebar, load progress, and live token streaming.
 
 ---
 

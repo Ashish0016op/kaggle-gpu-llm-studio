@@ -12,9 +12,9 @@ warnings.filterwarnings("ignore")
 os.environ["PYTHONWARNINGS"] = "ignore"
 os.environ["LLAMA_CPP_LIB_VERBOSE"] = "0"
 
-print("⚡ Step 1/3: Installing GPU Dependencies & Llama CUDA Wheels...")
+print("⚡ Step 1/3: Installing GPU Dependencies (Llama CUDA + Diffusers)...")
 subprocess.run([sys.executable, "-m", "pip", "install", "-q", "llama-cpp-python", "--extra-index-url", "https://abetlen.github.io/llama-cpp-python/whl/cu125"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-subprocess.run([sys.executable, "-m", "pip", "install", "-q", "fastapi", "uvicorn", "sse-starlette", "huggingface_hub", "pydantic", "requests", "torch"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "fastapi", "uvicorn", "sse-starlette", "huggingface_hub", "pydantic", "requests", "torch", "diffusers", "transformers", "accelerate"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 print("🚀 Step 2/3: Creating Kaggle Worker Server...")
 worker_code = """import os, sys, time, asyncio, json, warnings
